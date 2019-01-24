@@ -3,6 +3,7 @@
 
 using System;
 using System.Linq;
+using ApriltheInsuranceBot.Bot;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.Bot.Builder;
@@ -54,7 +55,7 @@ namespace ApriltheInsuranceBot
         /// <seealso cref="https://docs.microsoft.com/en-us/azure/bot-service/bot-service-manage-channels?view=azure-bot-service-4.0"/>
         public void ConfigureServices(IServiceCollection services)
         {
-            services.AddBot<ApriltheInsuranceBotBot>(options =>
+            services.AddBot<AprilBot>(options =>
            {
                var secretKey = Configuration.GetSection("botFileSecret")?.Value;
                var botFilePath = Configuration.GetSection("botFilePath")?.Value;
@@ -74,7 +75,7 @@ namespace ApriltheInsuranceBot
                options.CredentialProvider = new SimpleCredentialProvider(endpointService.AppId, endpointService.AppPassword);
 
                 // Creates a logger for the application to use.
-                ILogger logger = _loggerFactory.CreateLogger<ApriltheInsuranceBotBot>();
+                ILogger logger = _loggerFactory.CreateLogger<AprilBot>();
 
                 // Catches any errors that occur during a conversation turn and logs them.
                 options.OnTurnError = async (context, exception) =>
@@ -114,7 +115,7 @@ namespace ApriltheInsuranceBot
 
             // Create and register state accessors.
             // Accessors created here are passed into the IBot-derived class on every turn.
-            services.AddSingleton<ApriltheInsuranceBotAccessors>(sp =>
+            services.AddSingleton<BotAccessor>(sp =>
            {
                var options = sp.GetRequiredService<IOptions<BotFrameworkOptions>>().Value;
                if (options == null)
@@ -128,11 +129,12 @@ namespace ApriltheInsuranceBot
                    throw new InvalidOperationException("ConversationState must be defined and added before adding conversation-scoped state accessors.");
                }
 
-                // Create the custom state accessor.
-                // State accessors enable other components to read and write individual properties of state.
-                var accessors = new ApriltheInsuranceBotAccessors(conversationState)
+               // Create the custom state accessor.
+               // State accessors enable other components to read and write individual properties of state.
+               var accessors = new BotAccessor(conversationState)
                {
-                   CounterState = conversationState.CreateProperty<CounterState>(ApriltheInsuranceBotAccessors.CounterStateName),
+                   BotState = conversationState.CreateProperty<Bot.BotState>(BotAccessor.BotStateName),
+                   //CounterState = conversationState.CreateProperty<CounterState>(ApriltheInsuranceBotAccessors.CounterStateName),
                };
 
                return accessors;
