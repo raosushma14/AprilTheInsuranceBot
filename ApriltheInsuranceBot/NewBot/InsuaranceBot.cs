@@ -50,9 +50,7 @@ namespace ApriltheInsuranceBot.NewBot
             _dialogs.Add(new ConfirmPrompt("confirmPrompt"));
 
         }
-
         
-
         private async Task<DialogTurnResult> NameStepAsync(WaterfallStepContext stepContext, CancellationToken cancellationToken)
         {
             return await stepContext.PromptAsync("textPrompt", new PromptOptions {
