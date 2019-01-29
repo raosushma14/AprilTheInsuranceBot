@@ -1,12 +1,11 @@
-﻿using System;
+﻿using Microsoft.Bot.Builder.AI.Luis;
+using Microsoft.Bot.Configuration;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
-using Microsoft.Bot.Builder.AI;
-using Microsoft.Bot.Builder.AI.Luis;
-using Microsoft.Bot.Configuration;
 
-namespace ApriltheInsuranceBot.NewBot
+namespace ApriltheInsuranceBot
 {
     public class BotServices
     {
