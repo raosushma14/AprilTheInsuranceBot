@@ -7,6 +7,8 @@ namespace ApriltheInsuranceBot.NewBot
 {
     public class InsuaranceState
     {
-        public string userName { get; set; } = "null";
+        public InsuranceQuoteForm InsuranceQuoteForm { get; set; } = new InsuranceQuoteForm();
+
+        public string UserLanguage { get; set; }
     }
 }

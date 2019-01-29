@@ -5,9 +5,11 @@ using System;
 using System.Linq;
 using ApriltheInsuranceBot.Middleware;
 using ApriltheInsuranceBot.NewBot;
+using ApriltheInsuranceBot.Services;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.Bot.Builder;
+using Microsoft.Bot.Builder.Dialogs;
 using Microsoft.Bot.Builder.Integration;
 using Microsoft.Bot.Builder.Integration.AspNet.Core;
 using Microsoft.Bot.Configuration;
@@ -117,18 +119,55 @@ namespace ApriltheInsuranceBot
                 // Create Conversation State object.
                 // The Conversation State object is where we persist anything at the conversation-scope.
                 var conversationState = new ConversationState(dataStore);
-
                 options.State.Add(conversationState);
 
-                //options.Middleware.Add(new Middleware2());
+
+                // Translation key from settings
+                //var translatorKey = Configuration.GetValue<string>("msTranslatorKey");
+                //if (string.IsNullOrEmpty(translatorKey))
+                //{
+                //    throw new InvalidOperationException("Microsoft Text Translation API key is missing. Please add your translation key to the 'translatorKey' setting.");
+                //}
+
+                //// Translation middleware setup
+                //var translator = new MicrosoftTranslator(translatorKey);
+                //var translationMiddleware = new TranslationMiddleware(translator);
+                //options.Middleware.Add(translationMiddleware);
                 //options.Middleware.Add(new Middleware1());
 
 
             });
 
+            services.AddSingleton<TranslationMiddleware>(sp => {
+                var translatorKey = Configuration.GetValue<string>("msTranslatorKey");
+                if (string.IsNullOrEmpty(translatorKey))
+                {
+                    throw new InvalidOperationException("Microsoft Text Translation API key is missing. Please add your translation key to the 'translatorKey' setting.");
+                }
+                var options = sp.GetRequiredService<IOptions<BotFrameworkOptions>>().Value;
+                if (options == null)
+                {
+                    throw new InvalidOperationException("BotFrameworkOptions must be configured prior to setting up the state accessors");
+                }
+
+                var conversationState = options.State.OfType<ConversationState>().FirstOrDefault();
+                if (conversationState == null)
+                {
+                    throw new InvalidOperationException("ConversationState must be defined and added before adding conversation-scoped state accessors.");
+                }
+                return new TranslationMiddleware(new MicrosoftTranslator(translatorKey),
+                    new InsuranceBotAccessor(conversationState)
+                    {
+                        InsuaranceState = conversationState.CreateProperty<InsuaranceState>(InsuranceBotAccessor.InsuaranceStateName),
+
+                        ConversationDialogState = conversationState.CreateProperty<DialogState>("DialogState"),
+                    });
+            });
+
+
             // Create and register state accessors.
             // Accessors created here are passed into the IBot-derived class on every turn.
-            services.AddSingleton<InsuaranceBotAccessor>(sp =>
+            services.AddSingleton<InsuranceBotAccessor>(sp =>
             {
                var options = sp.GetRequiredService<IOptions<BotFrameworkOptions>>().Value;
                if (options == null)
@@ -144,10 +183,11 @@ namespace ApriltheInsuranceBot
 
                // Create the custom state accessor.
                // State accessors enable other components to read and write individual properties of state.
-               var accessors = new InsuaranceBotAccessor(conversationState)
+               var accessors = new InsuranceBotAccessor(conversationState)
                {
-                   InsuaranceState = conversationState.CreateProperty<InsuaranceState>(InsuaranceBotAccessor.InsuaranceStateName),
-                   //CounterState = conversationState.CreateProperty<CounterState>(ApriltheInsuranceBotAccessors.CounterStateName),
+                   InsuaranceState = conversationState.CreateProperty<InsuaranceState>(InsuranceBotAccessor.InsuaranceStateName),
+                   
+                   ConversationDialogState = conversationState.CreateProperty<DialogState>("DialogState"),
                };
 
                return accessors;
@@ -160,7 +200,20 @@ namespace ApriltheInsuranceBot
 
             app.UseDefaultFiles()
                 .UseStaticFiles()
-                .UseBotFramework();
+                .UseBotFramework()
+                .UseBotMiddleware<TranslationMiddleware>();
         }
+
+        
+    }
+}
+
+static class MiddlewareSetupExtensions
+{
+    public static IApplicationBuilder UseBotMiddleware<T>(this IApplicationBuilder applicationBuilder) where T : IMiddleware
+    {
+        var botFrameworkOptions = applicationBuilder.ApplicationServices.GetService<IOptions<BotFrameworkOptions>>();
+        botFrameworkOptions.Value.Middleware.Add(applicationBuilder.ApplicationServices.GetService<T>());
+        return applicationBuilder;
     }
 }

@@ -1,4 +1,5 @@
 ﻿using Microsoft.Bot.Builder;
+using Microsoft.Bot.Builder.Dialogs;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -6,15 +7,17 @@ using System.Threading.Tasks;
 
 namespace ApriltheInsuranceBot.NewBot
 {
-    public class InsuaranceBotAccessor
+    public class InsuranceBotAccessor
     {
         public ConversationState ConversationState { get; }
 
         public IStatePropertyAccessor<InsuaranceState> InsuaranceState { get; set; }
 
+        public IStatePropertyAccessor<DialogState> ConversationDialogState { get; set; }
+
         public static string InsuaranceStateName = "InsuaranceStateKey";
 
-        public InsuaranceBotAccessor(ConversationState conversationState)
+        public InsuranceBotAccessor(ConversationState conversationState)
         {
             ConversationState = conversationState ?? throw new ArgumentNullException(nameof(conversationState));
         }
