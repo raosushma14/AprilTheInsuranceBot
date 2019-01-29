@@ -138,6 +138,7 @@ namespace ApriltheInsuranceBot
 
             });
 
+            //https://github.com/MicrosoftDocs/bot-docs/issues/285
             services.AddSingleton<TranslationMiddleware>(sp => {
                 var translatorKey = Configuration.GetValue<string>("msTranslatorKey");
                 if (string.IsNullOrEmpty(translatorKey))
@@ -201,13 +202,14 @@ namespace ApriltheInsuranceBot
             app.UseDefaultFiles()
                 .UseStaticFiles()
                 .UseBotFramework()
-                .UseBotMiddleware<TranslationMiddleware>();
+                .UseBotMiddleware<TranslationMiddleware>(); //https://github.com/MicrosoftDocs/bot-docs/issues/285
         }
 
         
     }
 }
 
+//https://github.com/MicrosoftDocs/bot-docs/issues/285
 static class MiddlewareSetupExtensions
 {
     public static IApplicationBuilder UseBotMiddleware<T>(this IApplicationBuilder applicationBuilder) where T : IMiddleware
