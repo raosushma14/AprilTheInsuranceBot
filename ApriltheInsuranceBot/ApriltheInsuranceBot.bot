@@ -1,15 +1,28 @@
-﻿{
-  "name": "ApriltheInsuranceBot",
-  "services": [
-    {
-      "type": "endpoint",
-      "name": "development",
-      "endpoint": "http://localhost:3978/api/messages",
-      "appId": "",
-      "appPassword": "",
-      "id": "1"
-    }
-  ],
-  "padlock": "",
-  "version": "2.0"
+{
+    "name": "ApriltheInsuranceBot",
+    "description": "",
+    "services": [
+        {
+            "type": "endpoint",
+            "name": "development",
+            "endpoint": "http://localhost:3978/api/messages",
+            "appId": "",
+            "appPassword": "",
+            "id": "1"
+        },
+        {
+            "type": "luis",
+            "name": "luis",
+            "appId": "5f7a374b-eb1c-427b-a42a-03763ee87d58",
+            "authoringKey": "88c4549ad706421b904f8479aa7b5654",
+            "subscriptionKey": "88c4549ad706421b904f8479aa7b5654",
+            "version": "0.1",
+            "region": "westus",
+            "id": "34"
+        }
+    ],
+    "padlock": "",
+    "version": "2.0",
+    "path": "G:\\Sushma_UMD\\2nd sem\\web services\\Assignment 1\\Bot\\ApriltheInsuranceBot\\ApriltheInsuranceBot\\ApriltheInsuranceBot.bot",
+    "overrides": null
 }

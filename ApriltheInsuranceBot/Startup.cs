@@ -3,7 +3,8 @@
 
 using System;
 using System.Linq;
-using ApriltheInsuranceBot.Bot;
+using ApriltheInsuranceBot.Middleware;
+using ApriltheInsuranceBot.NewBot;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.Bot.Builder;
@@ -55,34 +56,41 @@ namespace ApriltheInsuranceBot
         /// <seealso cref="https://docs.microsoft.com/en-us/azure/bot-service/bot-service-manage-channels?view=azure-bot-service-4.0"/>
         public void ConfigureServices(IServiceCollection services)
         {
-            services.AddBot<AprilBot>(options =>
-           {
-               var secretKey = Configuration.GetSection("botFileSecret")?.Value;
-               var botFilePath = Configuration.GetSection("botFilePath")?.Value;
+            var secretKey = Configuration.GetSection("botFileSecret")?.Value;
+            var botFilePath = Configuration.GetSection("botFilePath")?.Value;
 
-                // Loads .bot configuration file and adds a singleton that your Bot can access through dependency injection.
-                var botConfig = BotConfiguration.Load(botFilePath ?? @".\ApriltheInsuranceBot.bot", secretKey);
-               services.AddSingleton(sp => botConfig ?? throw new InvalidOperationException($"The .bot config file could not be loaded. ({botConfig})"));
+            // Loads .bot configuration file and adds a singleton that your Bot can access through dependency injection.
+            var botConfig = BotConfiguration.Load(botFilePath ?? @".\ApriltheInsuranceBot.bot", secretKey);
+            services.AddSingleton(sp => botConfig ?? throw new InvalidOperationException($"The .bot config file could not be loaded. ({botConfig})"));
+
+            // Initialize Bot Connected Services clients.
+            var connectedServices = new BotServices(botConfig);
+            services.AddSingleton(sp => connectedServices);
+
+            services.AddSingleton(sp => botConfig);
+
+            services.AddBot<InsuaranceBot>(options =>
+            {
 
                 // Retrieve current endpoint.
                 var environment = _isProduction ? "production" : "development";
-               var service = botConfig.Services.FirstOrDefault(s => s.Type == "endpoint" && s.Name == environment);
-               if (!(service is EndpointService endpointService))
-               {
-                   throw new InvalidOperationException($"The .bot file does not contain an endpoint with name '{environment}'.");
-               }
+                var service = botConfig.Services.FirstOrDefault(s => s.Type == "endpoint" && s.Name == environment);
+                if (!(service is EndpointService endpointService))
+                {
+                    throw new InvalidOperationException($"The .bot file does not contain an endpoint with name '{environment}'.");
+                }
 
-               options.CredentialProvider = new SimpleCredentialProvider(endpointService.AppId, endpointService.AppPassword);
+                options.CredentialProvider = new SimpleCredentialProvider(endpointService.AppId, endpointService.AppPassword);
 
                 // Creates a logger for the application to use.
-                ILogger logger = _loggerFactory.CreateLogger<AprilBot>();
+                ILogger logger = _loggerFactory.CreateLogger<InsuaranceBot>();
 
                 // Catches any errors that occur during a conversation turn and logs them.
                 options.OnTurnError = async (context, exception) =>
-               {
+                {
                    logger.LogError($"Exception caught : {exception}");
                    await context.SendActivityAsync("Sorry, it looks like something went wrong.");
-               };
+                };
 
                 // The Memory Storage used here is for local bot debugging only. When the bot
                 // is restarted, everything stored in memory will be gone.
@@ -110,13 +118,18 @@ namespace ApriltheInsuranceBot
                 // The Conversation State object is where we persist anything at the conversation-scope.
                 var conversationState = new ConversationState(dataStore);
 
-               options.State.Add(conversationState);
-           });
+                options.State.Add(conversationState);
+
+                //options.Middleware.Add(new Middleware2());
+                //options.Middleware.Add(new Middleware1());
+
+
+            });
 
             // Create and register state accessors.
             // Accessors created here are passed into the IBot-derived class on every turn.
-            services.AddSingleton<BotAccessor>(sp =>
-           {
+            services.AddSingleton<InsuaranceBotAccessor>(sp =>
+            {
                var options = sp.GetRequiredService<IOptions<BotFrameworkOptions>>().Value;
                if (options == null)
                {
@@ -131,14 +144,14 @@ namespace ApriltheInsuranceBot
 
                // Create the custom state accessor.
                // State accessors enable other components to read and write individual properties of state.
-               var accessors = new BotAccessor(conversationState)
+               var accessors = new InsuaranceBotAccessor(conversationState)
                {
-                   BotState = conversationState.CreateProperty<Bot.BotState>(BotAccessor.BotStateName),
+                   InsuaranceState = conversationState.CreateProperty<InsuaranceState>(InsuaranceBotAccessor.InsuaranceStateName),
                    //CounterState = conversationState.CreateProperty<CounterState>(ApriltheInsuranceBotAccessors.CounterStateName),
                };
 
                return accessors;
-           });
+            });
         }
 
         public void Configure(IApplicationBuilder app, IHostingEnvironment env, ILoggerFactory loggerFactory)
