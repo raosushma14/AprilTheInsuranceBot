@@ -10,5 +10,7 @@ namespace ApriltheInsuranceBot.NewBot
         public InsuranceQuoteForm InsuranceQuoteForm { get; set; } = new InsuranceQuoteForm();
 
         public string UserLanguage { get; set; }
+
+        public string UserChoice { get; set; }
     }
 }

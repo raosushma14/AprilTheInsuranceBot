@@ -166,6 +166,15 @@ namespace ApriltheInsuranceBot
             });
 
 
+            services.AddTransient<VinDecoder>( (serviceProvider) => {
+                var baseUrl = Configuration.GetValue<string>("vinDecodeBaseUrl");
+                if (string.IsNullOrEmpty(baseUrl))
+                {
+                    throw new InvalidOperationException("Vin Decode Base URL is Missing. Please add your base url to the 'vinDecodeBaseUrl' setting.");
+                }
+                return new VinDecoder(baseUrl);
+            });
+
             // Create and register state accessors.
             // Accessors created here are passed into the IBot-derived class on every turn.
             services.AddSingleton<InsuranceBotAccessor>(sp =>
@@ -194,6 +203,7 @@ namespace ApriltheInsuranceBot
                return accessors;
             });
         }
+
 
         public void Configure(IApplicationBuilder app, IHostingEnvironment env, ILoggerFactory loggerFactory)
         {
