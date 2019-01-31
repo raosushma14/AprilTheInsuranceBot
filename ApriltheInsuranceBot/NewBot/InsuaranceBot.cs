@@ -19,6 +19,10 @@ namespace ApriltheInsuranceBot.NewBot
 
         public static readonly string LuisKey = "luis";
 
+        public const string quote = "I have 3 insurance quotes for you\n" +
+                "**1.** $2500 for 6 months, with deductible of $500\n**2.** $3000 for 6 months, with deductible of $1000\n**3.** $1500 for 6 months, with no deductible\n" +
+                "*You can have a look at this and reach out to our representatives for further procedures.*";
+
         private const string WelcomeText = "This bot will introduce you to natural language processing with LUIS. Type an utterance to get started";
 
         private DialogSet _dialogs;
@@ -27,12 +31,14 @@ namespace ApriltheInsuranceBot.NewBot
         /// </summary>
         private readonly BotServices _services;
         private readonly VinDecoder _vinDecoder;
+        private readonly EmailService _emailService;
 
-        public InsuaranceBot(BotServices services, InsuranceBotAccessor accessor, VinDecoder vinDecoder)
+        public InsuaranceBot(BotServices services, InsuranceBotAccessor accessor, VinDecoder vinDecoder,EmailService emailService)
         {
             _accessor = accessor ?? throw new System.ArgumentNullException(nameof(accessor));
             _services = services ?? throw new System.ArgumentNullException(nameof(services));
             _vinDecoder = vinDecoder ?? throw new System.ArgumentNullException(nameof(vinDecoder));
+            _emailService = emailService ?? throw new System.ArgumentNullException(nameof(emailService));
 
             if (!_services.LuisServices.ContainsKey(LuisKey))
             {
@@ -96,14 +102,12 @@ namespace ApriltheInsuranceBot.NewBot
 
             botState.InsuranceQuoteForm.Age = age;
 
-            await stepContext.Context.SendActivityAsync($"{botState.InsuranceQuoteForm.Name}, your age is set to {age} years.");
+            await stepContext.Context.SendActivityAsync($"Perfect, {botState.InsuranceQuoteForm.Name} your age is set to {age} years.");
             await _accessor.SetStateAsync(stepContext.Context, botState);
-
-            await stepContext.Context.SendActivityAsync("Thanks");
 
             return await stepContext.PromptAsync("textPrompt", new PromptOptions
             {
-                Prompt = MessageFactory.Text("Please enter your Driver's Licence Number Eg: ")
+                Prompt = MessageFactory.Text("Please enter your Driver's Licence Number [Eg: P456345009897]")
             }, cancellationToken);
            // return await stepContext.EndDialogAsync(cancellationToken);
         }
@@ -113,14 +117,14 @@ namespace ApriltheInsuranceBot.NewBot
             string licenseNumber = (string)stepContext.Result;
             var botState = await _accessor.GetStateAsync(stepContext.Context);
             botState.InsuranceQuoteForm.LicenseNumber = licenseNumber;
-            await stepContext.Context.SendActivityAsync($" , Thanks for entering your Driver's License Number.");
+           
             //await stepContext.Context.SendActivityAsync($" {botState.InsuranceQuoteForm.Name}, Thanks for entering your Driver's License Number.");
             await stepContext.Context.SendActivityAsync($"  Your Driver's License Number is set to {botState.InsuranceQuoteForm.LicenseNumber}");
 
             await _accessor.SetStateAsync(stepContext.Context, botState);
             return await stepContext.PromptAsync("textPrompt", new PromptOptions
             {
-                Prompt = MessageFactory.Text("Please enter your Vehicle Identification Number(VIN) Number Eg: ")
+                Prompt = MessageFactory.Text("Please enter your Vehicle Identification Number(VIN) Number [Eg: SAJWA6GL5FMK19811]")
             }, cancellationToken);
         }
 
@@ -131,7 +135,7 @@ namespace ApriltheInsuranceBot.NewBot
             botState.InsuranceQuoteForm.VIN = vin;
             await _accessor.SetStateAsync(stepContext.Context, botState);
             
-            await stepContext.Context.SendActivityAsync($"Great, your VIN is recorded as **{botState.InsuranceQuoteForm.VIN}**");
+            await stepContext.Context.SendActivityAsync($"Great, Let me find the car details for you");
 
             var vehicle = await _vinDecoder.DecodeVINAsync(vin);
             await stepContext.Context.SendActivityAsync($"Here's what I found for the specified VIN\n" +
@@ -150,10 +154,11 @@ namespace ApriltheInsuranceBot.NewBot
             if (yes)
             {
                 //put quote
-
+                await stepContext.Context.SendActivityAsync(quote);
                 return await stepContext.PromptAsync("choicePrompt", new PromptOptions
                 {
-                    Prompt = MessageFactory.Text("Please select how you want to get the quote"),
+                    Prompt = MessageFactory.Text("If you want me to give the quotes details and our representative contact, kindly select how do " +
+                    "you want me to reach out to you"),
                     RetryPrompt = MessageFactory.Text("Sorry, please choose from the options."),
                     Choices = ChoiceFactory.ToChoices(choices),
                 }, cancellationToken);
@@ -180,7 +185,7 @@ namespace ApriltheInsuranceBot.NewBot
                 await _accessor.SetStateAsync(stepContext.Context, botState);
                 return await stepContext.PromptAsync("textPrompt", new PromptOptions
                 {
-                    Prompt = MessageFactory.Text("Can you please enter your phone number?")
+                    Prompt = MessageFactory.Text("Great, Can you please enter your phone number?")
                 }, cancellationToken);
             }
             else if(choice.Value == choices[1])
@@ -190,7 +195,7 @@ namespace ApriltheInsuranceBot.NewBot
                 await _accessor.SetStateAsync(stepContext.Context, botState);
                 return await stepContext.PromptAsync("textPrompt", new PromptOptions
                 {
-                    Prompt = MessageFactory.Text("Can you please enter your email id?")
+                    Prompt = MessageFactory.Text("Sure, Can you please enter your email id?")
                 }, cancellationToken);
             }
             else if(choice.Value == choices[2])
@@ -209,12 +214,15 @@ namespace ApriltheInsuranceBot.NewBot
             if(botState.UserChoice == "Message")
             {
                 var phoneNumber = ((string)stepContext.Result).Trim();
-                await SMSService.SendMessageAsync($"1{phoneNumber}", "Thank you for choosing BBB Insurance. Please contact the number below with you quote number.\n" +
+                await SMSService.SendMessageAsync($"1{phoneNumber}", $"Thank you for choosing BBB Insurance. Here is the quote details {quote}\nPlease contact the number below with you quote number.\n" +
                     "Toll-Free: 1 800 123 9999");
             }
             else if(botState.UserChoice == "Email")
             {
-
+                var emailId = ((string)stepContext.Result).Trim();
+                await _emailService.SendEmailAsync(emailId,"From InsuranceBBB",$"Here is the quote details{quote}\nPlease contact the number below with you quote number.\n" +
+                    "Toll-Free: 1 800 123 9999");
+                await stepContext.Context.SendActivityAsync("Email Has been sent, check your inbox");
             }
             return await stepContext.EndDialogAsync(cancellationToken);
         }
@@ -249,7 +257,8 @@ namespace ApriltheInsuranceBot.NewBot
                             await turnContext.SendActivityAsync("How can I help you today?");
                             break;
                         case Intent_Capabilities:
-                            await turnContext.SendActivityAsync("I can help you get an insurance quote for your car.\nTry saying,\n*I need an insurance quote*");
+                            await turnContext.SendActivityAsync("I can help you get an insurance quote for your car and answer your doubts regarding car insurance.\n" +
+                                "Try saying,\n*I need an insurance quote*\n*What is an Insurance Deductible?*");
                             break;
                         case Intent_InsuranceQuote:
                             await turnContext.SendActivityAsync("Sure, I can help with getting an insurance quote");

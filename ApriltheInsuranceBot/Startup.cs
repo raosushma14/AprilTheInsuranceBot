@@ -175,6 +175,16 @@ namespace ApriltheInsuranceBot
                 return new VinDecoder(baseUrl);
             });
 
+
+            services.AddTransient<EmailService>((serviceProvider) => {
+                var baseUrl = Configuration.GetValue<string>("sendGridBaseUrl");
+                var authKey = Configuration.GetValue<string>("emailAuthKey");
+                if (string.IsNullOrEmpty(baseUrl) || string.IsNullOrEmpty(authKey))
+                {
+                    throw new InvalidOperationException("email Base URL or auth key is Missing. Please add your base url to the 'sendGridBaseUrl' setting.");
+                }
+                return new EmailService(baseUrl,authKey);
+            });
             // Create and register state accessors.
             // Accessors created here are passed into the IBot-derived class on every turn.
             services.AddSingleton<InsuranceBotAccessor>(sp =>
@@ -204,6 +214,7 @@ namespace ApriltheInsuranceBot
             });
         }
 
+       
 
         public void Configure(IApplicationBuilder app, IHostingEnvironment env, ILoggerFactory loggerFactory)
         {
